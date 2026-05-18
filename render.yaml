@@ -9,7 +9,7 @@ services:
     name: colweyz-app
     env: node
     plan: free # Change to starter/standard depending on your needs
-    buildCommand: npm install && npx prisma generate && npm run build
+    buildCommand: npm install --include=dev && npx prisma generate && npm run build
     startCommand: npx prisma db push --accept-data-loss && npm start
     envVars:
       - key: DATABASE_URL
