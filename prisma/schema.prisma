@@ -1,0 +1,242 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+// Since Prisma v6 uses env from prisma.config.ts if available, or .env. We will specify DATABASE_URL in .env.
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model SystemUser {
+  id          String   @id @default(cuid())
+  username    String   @unique
+  password    String?
+  role        String   // 'super_admin' | 'staff' | 'responsable'
+  permissions Json?    // Array of permissions
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Zone {
+  id        String   @id @default(cuid())
+  name      String
+  rate      Float
+  type      String   // 'local' | 'regional'
+  orders    Order[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Driver {
+  id             String   @id @default(cuid())
+  name           String
+  phone          String
+  initialBalance Float    @default(0)
+  status         String   // 'disponible' | 'occupé'
+  uid            String?
+  username       String?  @unique
+  password       String?
+  stock          Json?    // Record<string, number>
+  gains          Float?   @default(0)
+  balance        Float?   @default(0)
+  color          String?
+  orders         Order[]
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model Order {
+  id                    String    @id @default(cuid())
+  date                  DateTime  @default(now())
+  clientName            String
+  clientPhone           String?
+  address               String
+  productDetails        String?
+  productId             String?
+  products              Json?     // Array of product details
+  amount                Float
+  deliveryCost          Float?
+  status                String    // OrderStatus
+  
+  zoneId                String?
+  zone                  Zone?     @relation(fields: [zoneId], references: [id])
+  driverId              String?
+  driver                Driver?   @relation(fields: [driverId], references: [id])
+  
+  driverName            String?
+  remuneration          Float?
+  assignedAt            DateTime?
+  deliveredAt           DateTime?
+  postponedAt           DateTime?
+  scheduledAt           DateTime?
+  refusedBy             String?
+  paymentMethod         String?
+  modePaiement          String?
+  cancelReason          String?
+  shippingFee           Float?
+  isPrePaid             Boolean?  @default(false)
+  regionalPaymentStatus String?
+  logs                  Json?     // Array of logs
+  importedAt            DateTime?
+  purchaseCost          Float?
+  linkedOrderIds        Json?
+  isDepotDelivery       Boolean?  @default(false)
+  sortieDepotLogged     Boolean?  @default(false)
+  livraisonDepotConfirmee Boolean? @default(false)
+  remarks               String?
+  shippingRemarks       String?
+  assignmentRemarks     String?
+
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+}
+
+model Product {
+  id             String   @id @default(cuid())
+  title          String
+  description    String?
+  vendor         String?
+  productType    String?
+  status         String   // 'active' | 'archived' | 'draft' | 'actif'
+  totalInventory Int?
+  mainStock      Int?
+  sellingPrice   Float?
+  purchasePrice  Float?
+  source         String?  // 'shopify' | 'ponctuel'
+  
+  tags           Json?    // Array of tags
+  variants       Json?    // Array of variants
+  images         Json?    // Array of images
+  
+  stockGlobal    Json?
+  stockDepot     Json?
+  stockLivreurs  Json?
+  
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model AppSettings {
+  id                 String   @id @default(cuid())
+  adminPhone         String
+  logoUrl            String?
+  shopifyDomain      String?
+  shopifyAccessToken String?
+  ignoredShopifyIds  Json?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+}
+
+model FundRequest {
+  id            String   @id @default(cuid())
+  driverId      String
+  amount        Float
+  type          String?  // 'collect' | 'payout'
+  status        String   // 'pending' | 'paid_by_driver' | 'confirmed' | 'declined'
+  createdAt     DateTime @default(now())
+  confirmedAt   DateTime?
+  paymentMethod String?
+}
+
+model StockLivreurEntry {
+  id                    String   @id @default(cuid())
+  livreurId             String
+  produitId             String
+  produitNom            String
+  SI                    Int      @default(0)
+  entrees               Int      @default(0)
+  sorties               Int      @default(0)
+  SF                    Int      @default(0)
+  ajustementManuel      Int?     @default(0)
+  motifDernierAjustement String?
+  dateDernierAjustement String?
+  ajustePar             String?
+  updatedAt             DateTime @updatedAt
+}
+
+model StockOperation {
+  id          String   @id @default(cuid())
+  date        DateTime @default(now())
+  productId   String
+  productName String
+  type        String
+  quantity    Int
+  livreurId   String?
+  entiteType  String?
+  entiteId    String?
+  source      String?
+  commandeId  String?
+  referenceId String?
+  notes       String?
+  createdAt   DateTime @default(now())
+  annule      Boolean? @default(false)
+  annuleLe    DateTime?
+  annuleMotif String?
+}
+
+model ProductFinancialConfig {
+  id               String   @id @default(cuid())
+  productId        String
+  cau              Float
+  appro            Float
+  dailyBudgetUsd   Float
+  isCampaignActive Boolean? @default(true)
+  dateEffet        String?  // Formatted YYYY-MM-DD
+  updatedAt        DateTime @updatedAt
+
+  @@unique([productId, dateEffet])
+}
+
+model DailyFinancialEntry {
+  id           String   @id @default(cuid()) // Usually YYYY-MM-DD
+  date         String   @unique
+  exchangeRate Float
+  entries      Json     // Record<string, {soldQty: number, spendUsd: number}>
+  productOrder Json?    // Array of Product IDs
+}
+
+model DailyFinanceData {
+  id            String   @id @default(cuid()) // Usually YYYY-MM-DD
+  date          String   @unique
+  otherRevenues Json     // Array of {id, label, amount}
+  otherExpenses Json     // Array of {id, label, amount}
+}
+
+model AdHocProduct {
+  id            String   @id @default(cuid())
+  name          String
+  purchasePrice Float
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model PurchaseOrder {
+  id            String   @id @default(cuid())
+  date          DateTime @default(now())
+  supplierName  String
+  status        String   // 'draft' | 'ordered' | 'delivered' | 'cancelled'
+  items         Json     // Array of PurchaseOrderItem
+  totalAmount   Float
+  paymentStatus String   // 'unpaid' | 'partial' | 'paid'
+  amountPaid    Float?   @default(0)
+  expectedDeliveryDate DateTime?
+  deliveryDate  DateTime?
+  notes         String?
+  documents     Json?    // Array of PurchaseOrderDocument
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model AccountingEntry {
+  id            String   @id @default(cuid())
+  date          DateTime @default(now())
+  pieceNumber   String
+  label         String
+  lines         Json     // Array of AccountingEntryLine
+  isManual      Boolean  @default(true)
+  origine       String?  // 'finance' | 'approvisionnement' | 'manuel'
+  modifiable    Boolean? @default(true)
+  attachmentUrl String?
+  createdAt     DateTime @default(now())
+}

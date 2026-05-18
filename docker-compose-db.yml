@@ -1,0 +1,17 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    restart: always
+    environment:
+      POSTGRES_USER: colweyz
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: colweyz_db
+    ports:
+      - "5455:5432"
+    volumes:
+      - colweyz_pgdata:/var/lib/postgresql/data
+
+volumes:
+  colweyz_pgdata:
